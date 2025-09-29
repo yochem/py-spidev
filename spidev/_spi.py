@@ -217,5 +217,29 @@ class SpiDev(_cspi.SpiDev):
         else:
             return f"{self.__class__.__name__}()"
 
-    # def __repr__(self):
-    #     args = [f'' for a in ('bus', 'device', 'path', )
+    def __repr__(self) -> str:
+        # SpiDev(bus=0, device=1, bits_per_word=8)
+        args = ", ".join(
+            f"{a}={getattr(self, a)}"
+            for a in (
+                "bus",
+                "device",
+                "path",
+                "mode",
+                "bits_per_word",
+                "max_speed_hz",
+                "read0",
+            )
+            if getattr(self, a) is not None
+        )
+        return f"{self.__class__.__name__}({args})"
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, type(self)):
+            return False
+
+        try:
+            return self._resolve_path() == other._resolve_path()
+        except ValueError:
+            # return False if one of the instances is uninitiated
+            return False
