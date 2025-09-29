@@ -3,9 +3,12 @@ from . import _cspi
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from os import PathLike
     from types import TracebackType
-    from typing import Self, Union, Sequence
+    from typing import Self, Union, Sequence, overload
     from collections.abc import Buffer
+
+    StrPath = Union[str, PathLike[str]]
 
 
 class SpiDev(_cspi.SpiDev):
@@ -25,6 +28,31 @@ class SpiDev(_cspi.SpiDev):
         self.device = device
         if mode is not None:
             self.mode = mode
+
+        if path and (bus or device):
+            raise ValueError(
+                "both path and bus/device number of SPI device are provided"
+            )
+        self.path = path
+
+        if mode is not None:
+            self.mode = mode
+        if bits_per_word is not None:
+            self.bits_per_word = bits_per_word
+        if max_speed_hz is not None:
+            self.max_speed_hz = max_speed_hz
+        if read0 is not None:
+            super().__setattr__("read0", read0)
+
+        # TODO: open() here? It's what the original implementation did
+        self.open()
+
+    def _resolve_path(self) -> str:
+        if self.bus is not None and self.device is not None:
+            return "/dev/spidev{:d}.{:d}".format(self.bus, self.device)
+        elif self.path is not None:
+            return str(self.path)
+        raise ValueError("bus/device or path not set")
 
     @property
     def mode(self) -> int:
@@ -68,6 +96,29 @@ class SpiDev(_cspi.SpiDev):
         if fd < 0:
             raise ValueError("I/O operation on closed file")
         return fd
+
+    @overload
+    def open(self) -> None: ...
+    @overload
+    def open(self, bus: int, device: int) -> None: ...
+    def open(self, bus: int | None = None, device: int | None = None) -> None:
+        """Connect to the SPI device special file.
+
+        If bus and device are provided it opens "/dev/spidev<bus.<device>". If
+        path is provided it opens the SPI device at given path. Symbolic links
+        are followed.
+
+        Raises:
+            ValueError: If bus/device or path is not provided.
+        """
+        if bus:
+            self.bus = bus
+        if device:
+            self.device = device
+
+        path = self._resolve_path()
+        super().open_path(path)
+        # TODO: return and set fd
 
     def read(self, size: int | None = None, /) -> list[int]:
         """Read and return up to _size_ bytes.
@@ -116,8 +167,10 @@ class SpiDev(_cspi.SpiDev):
             ...
         ```
         """
-        if self.bus and self.device:
-            super().open(self.bus, self.device)
+        try:
+            self.open()
+        except ValueError:
+            pass
 
         return self
 
