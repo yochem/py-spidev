@@ -1,5 +1,5 @@
 /*
- * spidev_module.c - Python bindings for Linux SPI access through spidev
+ * _cspi.c - Python bindings for Linux SPI access through spidev
  *
  * MIT License
  *
@@ -1433,32 +1433,6 @@ PyDoc_STRVAR(SpiDevObjectType_doc,
 	"Return a new SPI object that is (optionally) connected to the\n"
 	"specified SPI device interface.\n");
 
-static
-PyObject *SpiDev_enter(PyObject *self, PyObject *args)
-{
-    if (!PyArg_ParseTuple(args, ""))
-        return NULL;
-
-    Py_INCREF(self);
-    return self;
-}
-
-static
-PyObject *SpiDev_exit(SpiDevObject *self, PyObject *args)
-{
-
-    PyObject *exc_type = 0;
-    PyObject *exc_value = 0;
-    PyObject *traceback = 0;
-    if (!PyArg_UnpackTuple(args, "__exit__", 3, 3, &exc_type, &exc_value,
-                           &traceback)) {
-        return 0;
-    }
-
-    SpiDev_close(self);
-    Py_RETURN_FALSE;
-}
-
 static PyMethodDef SpiDev_methods[] = {
 	{"open", (PyCFunction)SpiDev_open, METH_VARARGS | METH_KEYWORDS,
 		SpiDev_open_doc},
@@ -1480,10 +1454,6 @@ static PyMethodDef SpiDev_methods[] = {
 		SpiDev_xfer2_doc},
 	{"xfer3", (PyCFunction)SpiDev_xfer3, METH_VARARGS,
 		SpiDev_xfer3_doc},
-	{"__enter__", (PyCFunction)SpiDev_enter, METH_VARARGS,
-		NULL},
-	{"__exit__", (PyCFunction)SpiDev_exit, METH_VARARGS,
-		NULL},
 	{NULL},
 };
 
