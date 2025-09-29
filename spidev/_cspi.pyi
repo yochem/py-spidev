@@ -2,6 +2,7 @@
 # to be permanent and is their to help with uplifting most of the C module's
 # code to a .py file while making sure the properties and method signature stay
 # the same.
+from collections.abc import Buffer
 from typing import Any, Sequence, List, Tuple, Union
 
 class SpiDev:
@@ -12,9 +13,7 @@ class SpiDev:
     def fileno(self) -> int: ...
     def readbytes(self, length: int) -> List[int]: ...
     def writebytes(self, values: Sequence[int]) -> None: ...
-    def writebytes2(
-        self, values: Union[Sequence[int], bytes, bytearray, memoryview]
-    ) -> None: ...
+    def writebytes2(self, values: Union[Sequence[int], Buffer]) -> None: ...
     def xfer(
         self,
         values: Sequence[int],
