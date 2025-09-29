@@ -3,7 +3,7 @@
 # code to a .py file while making sure the properties and method signature stay
 # the same.
 from collections.abc import Buffer
-from typing import Any, Sequence, List, Tuple, Union
+from typing import Sequence, List, Tuple, Union
 
 class SpiDev:
     def __init__(self, bus: int | None = ..., client: int | None = ...) -> None: ...

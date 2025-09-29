@@ -1,7 +1,5 @@
 from . import _cspi
 
-from typing import TYPE_CHECKING
-
 from os import PathLike
 from types import TracebackType
 from typing import Self, Union, Sequence, overload, Any, TypeVar, Callable
@@ -12,6 +10,7 @@ T = TypeVar("T")
 
 
 def try_convert(val: Any, typename: Callable[[Any], T], varname: str = "Value") -> T:
+    """Try to convert `val` to `typename`. Raise a TypeError if conversion fails."""
     try:
         return typename(val)
     except (TypeError, ValueError):
@@ -120,6 +119,7 @@ class SpiDev:
         self._cmod.read0 = v
 
     def close(self) -> None:
+        """Close the object from the interface."""
         self._cmod.close()
 
     def closed(self) -> bool:
@@ -157,6 +157,10 @@ class SpiDev:
         path is provided it opens the SPI device at given path. Symbolic links
         are followed.
 
+        Args:
+            bus: Bus number.
+            device: Device number.
+
         Raises:
             ValueError: If bus/device or path is not provided.
         """
@@ -169,6 +173,14 @@ class SpiDev:
         # TODO: return and set fd
 
     def open_path(self, path: StrPath | None = None) -> None:
+        """Open SPI device at given path.
+
+        Args:
+            path: Path to SPI device.
+
+        Raises:
+            IOError
+        """
         if path:
             self.path = path
         self._cmod.open_path(self._resolve_path())
@@ -190,7 +202,7 @@ class SpiDev:
         return self._cmod.readbytes(size)
 
     def readable(self) -> bool:
-        """True if the SPI connection is currently open."""
+        """True if the SPI device is currently open."""
         return not self.closed()
 
     def readbytes(self, length: int) -> list[int]:
@@ -242,7 +254,8 @@ class SpiDev:
     def __enter__(self) -> Self:
         """
         Warning: If `bus` and `device` attributes or `path` attribute is not set,
-        the file has to be opened manually using the `open()` method.
+        the file has to be manually opened using its `open()` or `open_path()`
+        method.
         """
         try:
             self.open()
