@@ -13,13 +13,20 @@ if TYPE_CHECKING:
 
 def as_int(val: Any, name: str = "Value") -> int:
     try:
-        v = int(val)
+        return int(val)
     except (TypeError, ValueError):
         raise TypeError(f"{name} must be an integer, but is {type(val)}")
-    return v
 
 
 class SpiDev(_cspi.SpiDev):
+    """TODO.
+
+    Examples:
+        >>> SpiDev(0, 1) # connect to /dev/spidev0.1
+
+        >>> SpiDev(path='/dev/myspi') # connect to /dev/myspi
+    """
+
     def __init__(
         self,
         bus: int | None = None,
@@ -29,6 +36,7 @@ class SpiDev(_cspi.SpiDev):
         mode: int | None = None,
         bits_per_word: int | None = None,
         max_speed_hz: int | None = None,
+        read0: bool | None = None,
     ):
         super().__init__(bus, device)
 
@@ -75,6 +83,7 @@ class SpiDev(_cspi.SpiDev):
         if not 0 <= v <= 3:
             raise ValueError(f"mode must be between 0 and 3, but is {v}")
 
+        # TODO: needs investigation if this works
         super().__setattr__("mode", v)
 
     @property
@@ -89,6 +98,7 @@ class SpiDev(_cspi.SpiDev):
         if not (8 <= value <= 32):
             raise ValueError(f"bits_per_word must be between 8 and 32, but is {v}")
 
+        # TODO: needs investigation if this works
         super().__setattr__("bits_per_word", v)
 
     @property
@@ -99,6 +109,7 @@ class SpiDev(_cspi.SpiDev):
     @max_speed_hz.setter
     def max_speed_hz(self, value: int, /) -> None:
         v = as_int(value, "max_speed_hz")
+        # TODO: needs investigation if this works
         super().__setattr__("max_speed_hz", v)
 
     def closed(self) -> bool:
@@ -125,8 +136,10 @@ class SpiDev(_cspi.SpiDev):
 
     @overload
     def open(self) -> None: ...
+
     @overload
     def open(self, bus: int, device: int) -> None: ...
+
     def open(self, bus: int | None = None, device: int | None = None) -> None:
         """Connect to the SPI device special file.
 
@@ -156,8 +169,8 @@ class SpiDev(_cspi.SpiDev):
         """
         if not self.readable():
             raise OSError("SPI device not readable")
-        # TODO: negative size generally means "read as much as possible". How
-        # can we mimic this behavior?
+        # TODO: negative size in BaseIO.read() means "read as much as
+        # possible". How can we mimic this behavior?
         if size is None or size < 1:
             size = 1
         return super().readbytes(size)
@@ -178,20 +191,8 @@ class SpiDev(_cspi.SpiDev):
 
     def __enter__(self) -> Self:
         """
-        Warning: The `bus` and `device` attributes must be set to open the
-        connection automatically:
-
-        ```
-        spi = SpiDev(bus=0, device=1)
-        # or
-        spi = SpiDev()
-        spi.bus = 0
-        spi.device = 1
-        # or
-        with spi:
-            spi.open(0, 1)
-            ...
-        ```
+        Warning: If `bus` and `device` attributes or `path` attribute is not set,
+        the file has to be opened manually using the `open()` method.
         """
         try:
             self.open()
@@ -207,3 +208,14 @@ class SpiDev(_cspi.SpiDev):
         traceback: TracebackType | None,
     ) -> None:
         super().close()
+
+    def __str__(self) -> str:
+        if self.bus is not None and self.device is not None:
+            return f"{self.__class__.__name__}({self.bus}, {self.device})"
+        elif self.path is not None:
+            return f"{self.__class__.__name__}({self.path})"
+        else:
+            return f"{self.__class__.__name__}()"
+
+    # def __repr__(self):
+    #     args = [f'' for a in ('bus', 'device', 'path', )
