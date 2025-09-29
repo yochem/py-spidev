@@ -2,23 +2,23 @@ from . import _cspi
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from os import PathLike
-    from types import TracebackType
-    from typing import Self, Union, Sequence, overload, Any
-    from collections.abc import Buffer
+from os import PathLike
+from types import TracebackType
+from typing import Self, Union, Sequence, overload, Any, TypeVar, Callable
+from collections.abc import Buffer
 
-    StrPath = Union[str, PathLike[str]]
+StrPath = Union[str, PathLike[str]]
+T = TypeVar("T")
 
 
-def as_int(val: Any, name: str = "Value") -> int:
+def try_convert(val: Any, typename: Callable[[Any], T], varname: str = "Value") -> T:
     try:
-        return int(val)
+        return typename(val)
     except (TypeError, ValueError):
-        raise TypeError(f"{name} must be an integer, but is {type(val)}")
+        raise TypeError(f"{varname} must have type {typename}, but is {type(val)}")
 
 
-class SpiDev(_cspi.SpiDev):
+class SpiDev:
     """TODO.
 
     Examples:
@@ -38,7 +38,7 @@ class SpiDev(_cspi.SpiDev):
         max_speed_hz: int | None = None,
         read0: bool | None = None,
     ):
-        super().__init__(bus, device)
+        self._cmod = _cspi.SpiDev(bus, device)
 
         self.bus = bus
         self.device = device
@@ -55,7 +55,7 @@ class SpiDev(_cspi.SpiDev):
         if max_speed_hz is not None:
             self.max_speed_hz = max_speed_hz
         if read0 is not None:
-            super().__setattr__("read0", read0)
+            self.read0 = read0
 
         # TODO: open() here? It's what the original implementation did
         self.open()
@@ -74,46 +74,56 @@ class SpiDev(_cspi.SpiDev):
         A two bit pattern of clock polarity and phase [CPOL|CPHA],
         min: 0b00 = 0, max: 0b11 = 3
         """
-        return super().mode
+        return self._cmod.mode
 
     @mode.setter
     def mode(self, value: int, /) -> None:
-        v = as_int(value, "mode")
+        v = try_convert(value, int, "mode")
 
         if not 0 <= v <= 3:
             raise ValueError(f"mode must be between 0 and 3, but is {v}")
 
-        # TODO: needs investigation if this works
-        super().__setattr__("mode", v)
+        self._cmod.mode = v
 
     @property
     def bits_per_word(self) -> int:
         """Bits per word used in the xfer methods."""
-        return super().bits_per_word
+        return self._cmod.bits_per_word
 
     @bits_per_word.setter
     def bits_per_word(self, value: int, /) -> None:
-        v = as_int(value, "bits_per_word")
+        v = try_convert(value, int, "bits_per_word")
 
         if not (8 <= value <= 32):
             raise ValueError(f"bits_per_word must be between 8 and 32, but is {v}")
 
-        # TODO: needs investigation if this works
-        super().__setattr__("bits_per_word", v)
+        self._cmod.bits_per_word = v
 
     @property
     def max_speed_hz(self) -> int:
         """Max speed (in Hertz)."""
-        return super().max_speed_hz
+        return self._cmod.max_speed_hz
 
     @max_speed_hz.setter
     def max_speed_hz(self, value: int, /) -> None:
-        v = as_int(value, "max_speed_hz")
-        # TODO: needs investigation if this works
-        super().__setattr__("max_speed_hz", v)
+        v = try_convert(value, int, "max_speed_hz")
+        self._cmod.max_speed_hz = v
+
+    @property
+    def read0(self) -> bool:
+        """Read 0 bytes after transfer to lower CS if cshigh is set."""
+        return self._cmod.read0
+
+    @read0.setter
+    def read0(self, value: bool, /) -> None:
+        v = try_convert(value, bool, "read0")
+        self._cmod.read0 = v
+
+    def close(self) -> None:
+        self._cmod.close()
 
     def closed(self) -> bool:
-        """True if the connection is closed."""
+        """True if the connection is not opened."""
         try:
             self.fileno()
             return True
@@ -129,7 +139,7 @@ class SpiDev(_cspi.SpiDev):
         Raises:
             ValueError: if the connection is not open.
         """
-        fd = super().fileno()
+        fd = self._cmod.fileno()
         if fd < 0:
             raise ValueError("I/O operation on closed file")
         return fd
@@ -155,9 +165,13 @@ class SpiDev(_cspi.SpiDev):
         if device:
             self.device = device
 
-        path = self._resolve_path()
-        super().open_path(path)
+        self.open_path()
         # TODO: return and set fd
+
+    def open_path(self, path: StrPath | None = None) -> None:
+        if path:
+            self.path = path
+        self._cmod.open_path(self._resolve_path())
 
     def read(self, size: int | None = None, /) -> list[int]:
         """Read and return up to _size_ bytes.
@@ -173,11 +187,14 @@ class SpiDev(_cspi.SpiDev):
         # possible". How can we mimic this behavior?
         if size is None or size < 1:
             size = 1
-        return super().readbytes(size)
+        return self._cmod.readbytes(size)
 
     def readable(self) -> bool:
         """True if the SPI connection is currently open."""
         return not self.closed()
+
+    def readbytes(self, length: int) -> list[int]:
+        return self._cmod.readbytes(length)
 
     def writeable(self) -> bool:
         """True if the SPI connection is currently open."""
@@ -187,7 +204,40 @@ class SpiDev(_cspi.SpiDev):
         if not self.writeable():
             raise OSError("SPI device not writeable")
         # TODO: return number of bytes written
-        super().writebytes2(b)
+        self._cmod.writebytes2(b)
+
+    def writebytes(self, values: Sequence[int]) -> None:
+        self._cmod.writebytes(values)
+
+    def writebytes2(self, values: Union[Sequence[int], Buffer]) -> None:
+        self._cmod.writebytes2(values)
+
+    def xfer(
+        self,
+        values: Sequence[int],
+        speed_hz: int | None = None,
+        delay_usecs: int | None = None,
+        bits_per_word: int | None = None,
+    ) -> list[int]:
+        return self._cmod.xfer(values, speed_hz, delay_usecs, bits_per_word)
+
+    def xfer2(
+        self,
+        values: Sequence[int],
+        speed_hz: int | None = None,
+        delay_usecs: int | None = None,
+        bits_per_word: int | None = None,
+    ) -> list[int]:
+        return self._cmod.xfer2(values, speed_hz, delay_usecs, bits_per_word)
+
+    def xfer3(
+        self,
+        values: Sequence[int],
+        speed_hz: int | None = None,
+        delay_usecs: int | None = None,
+        bits_per_word: int | None = None,
+    ) -> tuple[int, ...]:
+        return self._cmod.xfer3(values, speed_hz, delay_usecs, bits_per_word)
 
     def __enter__(self) -> Self:
         """
@@ -207,20 +257,23 @@ class SpiDev(_cspi.SpiDev):
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> None:
-        super().close()
+        self._cmod.close()
 
     def __str__(self) -> str:
         if self.bus is not None and self.device is not None:
+            # SpiDev(0, 1)
             return f"{self.__class__.__name__}({self.bus}, {self.device})"
         elif self.path is not None:
-            return f"{self.__class__.__name__}({self.path})"
+            # SpiDev('/dev/myspi')
+            return f"{self.__class__.__name__}({repr(self.path)})"
         else:
+            # SpiDev()
             return f"{self.__class__.__name__}()"
 
     def __repr__(self) -> str:
         # SpiDev(bus=0, device=1, bits_per_word=8)
         args = ", ".join(
-            f"{a}={getattr(self, a)}"
+            f"{a}={repr(getattr(self, a))}"
             for a in (
                 "bus",
                 "device",
