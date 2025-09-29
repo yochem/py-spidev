@@ -5,10 +5,18 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from os import PathLike
     from types import TracebackType
-    from typing import Self, Union, Sequence, overload
+    from typing import Self, Union, Sequence, overload, Any
     from collections.abc import Buffer
 
     StrPath = Union[str, PathLike[str]]
+
+
+def as_int(val: Any, name: str = "Value") -> int:
+    try:
+        v = int(val)
+    except (TypeError, ValueError):
+        raise TypeError(f"{name} must be an integer, but is {type(val)}")
+    return v
 
 
 class SpiDev(_cspi.SpiDev):
@@ -26,11 +34,6 @@ class SpiDev(_cspi.SpiDev):
 
         self.bus = bus
         self.device = device
-        if mode is not None:
-            self.mode = mode
-        if bits_per_word is not None:
-            self.bits_per_word = bits_per_word
-
         if path and (bus or device):
             raise ValueError(
                 "both path and bus/device number of SPI device are provided"
@@ -67,10 +70,7 @@ class SpiDev(_cspi.SpiDev):
 
     @mode.setter
     def mode(self, value: int, /) -> None:
-        try:
-            v = int(value)
-        except (TypeError, ValueError):
-            raise TypeError(f"mode must be an integer, but is {type(value)}")
+        v = as_int(value, "mode")
 
         if not 0 <= v <= 3:
             raise ValueError(f"mode must be between 0 and 3, but is {v}")
@@ -84,15 +84,22 @@ class SpiDev(_cspi.SpiDev):
 
     @bits_per_word.setter
     def bits_per_word(self, value: int, /) -> None:
-        try:
-            v = int(value)
-        except (TypeError, ValueError):
-            raise TypeError(f"bits_per_word must be an integer, but is {type(value)}")
+        v = as_int(value, "bits_per_word")
 
         if not (8 <= value <= 32):
             raise ValueError(f"bits_per_word must be between 8 and 32, but is {v}")
 
         super().__setattr__("bits_per_word", v)
+
+    @property
+    def max_speed_hz(self) -> int:
+        """Max speed (in Hertz)."""
+        return super().max_speed_hz
+
+    @max_speed_hz.setter
+    def max_speed_hz(self, value: int, /) -> None:
+        v = as_int(value, "max_speed_hz")
+        super().__setattr__("max_speed_hz", v)
 
     def closed(self) -> bool:
         """True if the connection is closed."""

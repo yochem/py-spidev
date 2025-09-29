@@ -1211,27 +1211,14 @@ SpiDev_get_max_speed_hz(SpiDevObject *self, void *closure)
 static int
 SpiDev_set_max_speed_hz(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint32_t max_speed_hz;
 
 	if (val == NULL) {
 		PyErr_SetString(PyExc_TypeError,
 			"Cannot delete attribute");
 		return -1;
 	}
-#if PY_MAJOR_VERSION < 3
-	if (PyInt_Check(val)) {
-		max_speed_hz = PyInt_AS_LONG(val);
-	} else
-#endif
-	{
-		if (PyLong_Check(val)) {
-			max_speed_hz = PyLong_AS_LONG(val);
-		} else {
-			PyErr_SetString(PyExc_TypeError,
-				"The max_speed_hz attribute must be an integer");
-			return -1;
-		}
-	}
+
+	uint32_t max_speed_hz = PyLong_AS_LONG(val);
 
 	if (self->max_speed_hz != max_speed_hz) {
 		if (ioctl(self->fd, SPI_IOC_WR_MAX_SPEED_HZ, &max_speed_hz) == -1) {
