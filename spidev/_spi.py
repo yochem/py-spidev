@@ -19,7 +19,29 @@ class SpiDev(_cspi.SpiDev):
 
         self.bus = bus
         self.device = device
-        super().__init__(bus, client)
+        if mode is not None:
+            self.mode = mode
+
+    @property
+    def mode(self) -> int:
+        """SPI mode.
+
+        A two bit pattern of clock polarity and phase [CPOL|CPHA],
+        min: 0b00 = 0, max: 0b11 = 3
+        """
+        return super().mode
+
+    @mode.setter
+    def mode(self, value: int) -> None:
+        try:
+            v = int(value)
+        except (TypeError, ValueError):
+            raise TypeError(f"mode must be an integer, but is {value}")
+
+        if not 0 <= v <= 3:
+            raise ValueError(f"mode must be between 0 and 3, but is {v}")
+
+        super().__setattr__("mode", v)
 
     def fileno(self) -> int:
         """Return the file descriptor if it exists.

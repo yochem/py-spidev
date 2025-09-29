@@ -1012,28 +1012,8 @@ SpiDev_set_mode(SpiDevObject *self, PyObject *val, void *closure)
 			"Cannot delete attribute");
 		return -1;
 	}
-#if PY_MAJOR_VERSION < 3
-	if (PyInt_Check(val)) {
-		mode = PyInt_AS_LONG(val);
-	} else
-#endif
-	{
-		if (PyLong_Check(val)) {
-			mode = PyLong_AS_LONG(val);
-		} else {
-			PyErr_SetString(PyExc_TypeError,
-				"The mode attribute must be an integer");
-			return -1;
-		}
-	}
 
-
-	if ( mode > 3 ) {
-		PyErr_SetString(PyExc_TypeError,
-			"The mode attribute must be an integer"
-				 "between 0 and 3.");
-		return -1;
-	}
+	mode = PyLong_AS_LONG(val);
 
 	// clean and set CPHA and CPOL bits
 	tmp = ( self->mode & ~(SPI_CPHA | SPI_CPOL) ) | mode ;
