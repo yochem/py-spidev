@@ -28,6 +28,8 @@ class SpiDev(_cspi.SpiDev):
         self.device = device
         if mode is not None:
             self.mode = mode
+        if bits_per_word is not None:
+            self.bits_per_word = bits_per_word
 
         if path and (bus or device):
             raise ValueError(
@@ -64,16 +66,33 @@ class SpiDev(_cspi.SpiDev):
         return super().mode
 
     @mode.setter
-    def mode(self, value: int) -> None:
+    def mode(self, value: int, /) -> None:
         try:
             v = int(value)
         except (TypeError, ValueError):
-            raise TypeError(f"mode must be an integer, but is {value}")
+            raise TypeError(f"mode must be an integer, but is {type(value)}")
 
         if not 0 <= v <= 3:
             raise ValueError(f"mode must be between 0 and 3, but is {v}")
 
         super().__setattr__("mode", v)
+
+    @property
+    def bits_per_word(self) -> int:
+        """Bits per word used in the xfer methods."""
+        return super().bits_per_word
+
+    @bits_per_word.setter
+    def bits_per_word(self, value: int, /) -> None:
+        try:
+            v = int(value)
+        except (TypeError, ValueError):
+            raise TypeError(f"bits_per_word must be an integer, but is {type(value)}")
+
+        if not (8 <= value <= 32):
+            raise ValueError(f"bits_per_word must be between 8 and 32, but is {v}")
+
+        super().__setattr__("bits_per_word", v)
 
     def closed(self) -> bool:
         """True if the connection is closed."""

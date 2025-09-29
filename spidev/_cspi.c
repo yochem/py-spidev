@@ -1182,33 +1182,13 @@ SpiDev_get_bits_per_word(SpiDevObject *self, void *closure)
 static int
 SpiDev_set_bits_per_word(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint8_t bits;
-
 	if (val == NULL) {
 		PyErr_SetString(PyExc_TypeError,
 			"Cannot delete attribute");
 		return -1;
 	}
-#if PY_MAJOR_VERSION < 3
-	if (PyInt_Check(val)) {
-		bits = PyInt_AS_LONG(val);
-	} else
-#endif
-	{
-		if (PyLong_Check(val)) {
-			bits = PyLong_AS_LONG(val);
-		} else {
-			PyErr_SetString(PyExc_TypeError,
-				"The bits_per_word attribute must be an integer");
-			return -1;
-		}
-	}
 
-		if (bits < 8 || bits > 32) {
-		PyErr_SetString(PyExc_TypeError,
-			"invalid bits_per_word (8 to 32)");
-		return -1;
-	}
+	uint8_t bits = PyLong_AS_LONG(val);
 
 	if (self->bits_per_word != bits) {
 		if (ioctl(self->fd, SPI_IOC_WR_BITS_PER_WORD, &bits) == -1) {
