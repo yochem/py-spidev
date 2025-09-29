@@ -5,44 +5,46 @@
 from typing import Any, Sequence, List, Tuple, Union
 
 class SpiDev:
-	def __init__(self, bus: int | None = ..., client: int | None = ...) -> None: ...
-	def open(self, bus: int, device: int) -> None: ...
-	def open_path(self, path: str) -> None: ...
-	def close(self) -> None: ...
-	def fileno(self) -> int: ...
-	def readbytes(self, length: int) -> List[int]: ...
-	def writebytes(self, values: Sequence[int]) -> None: ...
-	def writebytes2(self, values: Union[Sequence[int], bytes, bytearray, memoryview]) -> None: ...
-	def xfer(
-		self,
-		values: Sequence[int],
-		speed_hz: int | None = ...,
-		delay_usecs: int | None = ...,
-		bits_per_word: int | None = ...
-	) -> List[int]: ...
-	def xfer2(
-		self,
-		values: Sequence[int],
-		speed_hz: int | None = ...,
-		delay_usecs: int | None = ...,
-		bits_per_word: int | None = ...
-	) -> List[int]: ...
-	def xfer3(
-		self,
-		values: Sequence[int],
-		speed_hz: int | None = ...,
-		delay_usecs: int | None = ...,
-		bits_per_word: int | None = ...
-	) -> Tuple[int, ...]: ...
+    def __init__(self, bus: int | None = ..., client: int | None = ...) -> None: ...
+    def open(self, bus: int, device: int) -> None: ...
+    def open_path(self, path: str) -> None: ...
+    def close(self) -> None: ...
+    def fileno(self) -> int: ...
+    def readbytes(self, length: int) -> List[int]: ...
+    def writebytes(self, values: Sequence[int]) -> None: ...
+    def writebytes2(
+        self, values: Union[Sequence[int], bytes, bytearray, memoryview]
+    ) -> None: ...
+    def xfer(
+        self,
+        values: Sequence[int],
+        speed_hz: int | None = ...,
+        delay_usecs: int | None = ...,
+        bits_per_word: int | None = ...,
+    ) -> List[int]: ...
+    def xfer2(
+        self,
+        values: Sequence[int],
+        speed_hz: int | None = ...,
+        delay_usecs: int | None = ...,
+        bits_per_word: int | None = ...,
+    ) -> List[int]: ...
+    def xfer3(
+        self,
+        values: Sequence[int],
+        speed_hz: int | None = ...,
+        delay_usecs: int | None = ...,
+        bits_per_word: int | None = ...,
+    ) -> Tuple[int, ...]: ...
 
-	mode: int
-	cshigh: bool
-	threewire: bool
-	lsbfirst: bool
-	loop: bool
-	no_cs: bool
-	bits_per_word: int
-	max_speed_hz: int
-	read0: bool
+    mode: int
+    cshigh: bool
+    threewire: bool
+    lsbfirst: bool
+    loop: bool
+    no_cs: bool
+    bits_per_word: int
+    max_speed_hz: int
+    read0: bool
 
 __version__: str

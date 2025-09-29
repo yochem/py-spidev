@@ -21,6 +21,20 @@ class SpiDev(_cspi.SpiDev):
         self.device = device
         super().__init__(bus, client)
 
+    def fileno(self) -> int:
+        """Return the file descriptor if it exists.
+
+        Returns:
+            int: File descriptor number.
+
+        Raises:
+            ValueError: if the connection is not open.
+        """
+        fd = super().fileno()
+        if fd < 0:
+            raise ValueError("I/O operation on closed file")
+        return fd
+
     def __enter__(self) -> Self:
         """
         Warning: The `bus` and `device` attributes have to be set to open the
