@@ -4,7 +4,7 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, Callable, Self, TypeVar, overload
 from warnings import deprecated
 
-from . import _cspi
+from . import _spimodule
 
 if TYPE_CHECKING:
     from collections.abc import Buffer, Sequence
@@ -45,7 +45,7 @@ class SpiDev:
         max_speed_hz: int | None = None,
         read0: bool | None = None,
     ) -> None:
-        self._cmod = _cspi.SpiDev(bus, device)
+        self._cmod = _spimodule.SpiDev(bus, device)
 
         self.bus = bus
         self.device = device

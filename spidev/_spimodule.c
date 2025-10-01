@@ -1257,6 +1257,27 @@ SpiDev_set_read0(SpiDevObject *self, PyObject *val, void *closure)
 	return 0;
 }
 
+static PyObject *
+SpiDev_get_settings(SpiDevObject *self, void *closure)
+{
+	PyObject* dict = PyDict_New();
+    if (!dict)
+        return NULL;
+
+	PyDict_SetItemString(dict, "mode", Py_BuildValue("i", (self->mode & (SPI_CPHA | SPI_CPOL))));
+    PyDict_SetItemString(dict, "bits_per_word", Py_BuildValue("i", self->bits_per_word));
+    PyDict_SetItemString(dict, "max_speed_hz", Py_BuildValue("i", self->max_speed_hz));
+    PyDict_SetItemString(dict, "read0", (self->read0 == 1) ? Py_True : Py_False);
+
+    PyDict_SetItemString(dict, "cshigh", (self->mode & SPI_CS_HIGH) ? Py_True : Py_False);
+    PyDict_SetItemString(dict, "threewire", (self->mode & SPI_3WIRE) ? Py_True : Py_False);
+    PyDict_SetItemString(dict, "lsbfirst", (self->mode & SPI_LSB_FIRST) ? Py_True : Py_False);
+    PyDict_SetItemString(dict, "loop", (self->mode & SPI_LOOP) ? Py_True : Py_False);
+    PyDict_SetItemString(dict, "no_cs", (self->mode & SPI_NO_CS) ? Py_True : Py_False);
+
+	return dict;
+}
+
 static PyGetSetDef SpiDev_getset[] = {
 	{"mode", (getter)SpiDev_get_mode, (setter)SpiDev_set_mode,
 			"SPI mode as two bit pattern of \n"
