@@ -78,10 +78,19 @@ class SpiDev:
 
         """
         if self.bus is not None and self.device is not None:
-            return "/dev/spidev{self.bus:d}.{self.device:d}"
+            return f"/dev/spidev{self.bus:d}.{self.device:d}"
         if self.path is not None:
             return str(self.path)
         raise ValueError("bus/device or path not set")
+
+    @property
+    def closed(self) -> bool:
+        """Return True if the connection is not opened."""
+        try:
+            self.fileno()
+            return True
+        except ValueError:
+            return False
 
     @property
     def mode(self) -> int:
@@ -141,14 +150,6 @@ class SpiDev:
     def close(self) -> None:
         """Close the object from the interface."""
         self._cmod.close()
-
-    def closed(self) -> bool:
-        """Return True if the connection is not opened."""
-        try:
-            self.fileno()
-            return True
-        except ValueError:
-            return False
 
     def fileno(self) -> int:
         """Return the file descriptor if it exists.
@@ -210,7 +211,7 @@ class SpiDev:
             self.path = path
         self._cmod.open_path(self._resolve_path())
 
-    def read(self, size: int | None = None, /) -> list[int]:
+    def read(self, size: int = -1, /) -> list[int]:
         """Read and return up to _size_ bytes.
 
         If size is omitted or negative, 1 byte is read.
@@ -218,18 +219,21 @@ class SpiDev:
         Returns:
             list[int]: _size_ number of bytes.
 
+        Raises:
+            OSError: If device is closed.
+
         """
         if not self.readable():
-            raise OSError("SPI device not readable")
+            raise OSError("device closed")
         # TODO: negative size in BaseIO.read() means "read as much as
         # possible". How can we mimic this behavior?
-        if size is None or size < 1:
+        if size < 1:
             size = 1
         return self._cmod.readbytes(size)
 
     def readable(self) -> bool:
         """Return True if the SPI device is currently open."""
-        return not self.closed()
+        return not self.closed
 
     @deprecated("use SpiDev().read()")
     def readbytes(self, length: int) -> list[int]:
@@ -237,12 +241,25 @@ class SpiDev:
 
     def writeable(self) -> bool:
         """Return True if the SPI connection is currently open."""
-        return not self.closed()
+        return not self.closed
 
     def write(self, b: Sequence[int] | Buffer, /) -> None:
+        """Write bytes to SPI device.
+
+        Accepts arbitrary large lists. If list size exceeds buffer size (read
+        from /sys/module/spidev/parameters/bufsiz), data will be
+        split into smaller chunks and sent in multiple operations.
+
+        Args:
+            b: Sequence of bytes or Buffer to write.
+
+        Raises:
+            OSError: If device is closed.
+
+        """
         if not self.writeable():
-            raise OSError("SPI device not writeable")
-        # TODO: return number of bytes written
+            raise OSError("device closed")
+        # TODO: return number of bytes written like RawIOBase
         self._cmod.writebytes2(b)
 
     @deprecated("use SpiDev().write()")
@@ -260,6 +277,20 @@ class SpiDev:
         delay_usecs: int | None = None,
         bits_per_word: int | None = None,
     ) -> list[int]:
+        """Performs an SPI transaction.
+
+        NOTE: Chip-select should be released and reactivated between blocks.
+
+        Args:
+            values: Bytes to write.
+            speed_hz: Speed to use.
+            delay_usecs: Delay in microseconds between blocks.
+            bits_per_word: Bits per word.
+
+        Returns:
+            TODO
+
+        """
         return self._cmod.xfer(values, speed_hz, delay_usecs, bits_per_word)
 
     def xfer2(
@@ -269,6 +300,20 @@ class SpiDev:
         delay_usecs: int | None = None,
         bits_per_word: int | None = None,
     ) -> list[int]:
+        """Performs an SPI transaction.
+
+        NOTE: Chip-select should be held active between blocks.
+
+        Args:
+            values: Bytes to write.
+            speed_hz: Speed to use.
+            delay_usecs: Delay in microseconds between blocks.
+            bits_per_word: Bits per word.
+
+        Returns:
+            TODO
+
+        """
         return self._cmod.xfer2(values, speed_hz, delay_usecs, bits_per_word)
 
     def xfer3(
@@ -278,6 +323,22 @@ class SpiDev:
         delay_usecs: int | None = None,
         bits_per_word: int | None = None,
     ) -> tuple[int, ...]:
+        """Performs an SPI transaction.
+
+        Accepts arbitrary large lists. If list size exceeds buffer size (read
+        from /sys/module/spidev/parameters/bufsiz), data will be split
+        into smaller chunks and sent in multiple operations.
+
+        Args:
+            values: Bytes to write.
+            speed_hz: Speed to use.
+            delay_usecs: Delay in microseconds between blocks.
+            bits_per_word: Bits per word.
+
+        Returns:
+            TODO
+
+        """
         return self._cmod.xfer3(values, speed_hz, delay_usecs, bits_per_word)
 
     def __enter__(self) -> Self:
