@@ -1,6 +1,4 @@
-"""
-TODO
-"""
+"""TODO."""
 
 from ._spi import SpiDev
 

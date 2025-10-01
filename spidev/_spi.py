@@ -1,20 +1,27 @@
+from __future__ import annotations
+
+from contextlib import suppress
+from typing import TYPE_CHECKING, Any, Callable, Self, TypeVar, overload
+from warnings import deprecated
+
 from . import _cspi
 
-from os import PathLike
-from types import TracebackType
-from typing import Self, Union, Sequence, overload, Any, TypeVar, Callable
-from collections.abc import Buffer
+if TYPE_CHECKING:
+    from collections.abc import Buffer, Sequence
+    from os import PathLike
+    from types import TracebackType
 
-StrPath = Union[str, PathLike[str]]
-T = TypeVar("T")
+    StrPath = str | PathLike[str]
+    T = TypeVar("T")
 
 
-def try_convert(val: Any, typename: Callable[[Any], T], varname: str = "Value") -> T:
+def try_convert(val: object, typename: Callable[[Any], T], varname: str = "Value") -> T:
     """Try to convert `val` to `typename`. Raise a TypeError if conversion fails."""
     try:
         return typename(val)
-    except (TypeError, ValueError):
-        raise TypeError(f"{varname} must have type {typename}, but is {type(val)}")
+    except (TypeError, ValueError) as err:
+        msg = f"{varname} must have type {typename}, but is {type(val)}"
+        raise TypeError(msg) from err
 
 
 class SpiDev:
@@ -24,9 +31,10 @@ class SpiDev:
         >>> SpiDev(0, 1) # connect to /dev/spidev0.1
 
         >>> SpiDev(path='/dev/myspi') # connect to /dev/myspi
+
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         bus: int | None = None,
         device: int | None = None,
@@ -36,14 +44,14 @@ class SpiDev:
         bits_per_word: int | None = None,
         max_speed_hz: int | None = None,
         read0: bool | None = None,
-    ):
+    ) -> None:
         self._cmod = _cspi.SpiDev(bus, device)
 
         self.bus = bus
         self.device = device
         if path and (bus or device):
             raise ValueError(
-                "both path and bus/device number of SPI device are provided"
+                "both path and bus/device number of SPI device are provided",
             )
         self.path = path
 
@@ -60,9 +68,18 @@ class SpiDev:
         self.open()
 
     def _resolve_path(self) -> str:
+        """Construct path from bus and device numbers or from given path.
+
+        Returns:
+            str: Resolved path to the SPI device.
+
+        Raises:
+            ValueError: if bus+device or path not set
+
+        """
         if self.bus is not None and self.device is not None:
-            return "/dev/spidev{:d}.{:d}".format(self.bus, self.device)
-        elif self.path is not None:
+            return "/dev/spidev{self.bus:d}.{self.device:d}"
+        if self.path is not None:
             return str(self.path)
         raise ValueError("bus/device or path not set")
 
@@ -79,8 +96,10 @@ class SpiDev:
     def mode(self, value: int, /) -> None:
         v = try_convert(value, int, "mode")
 
-        if not 0 <= v <= 3:
-            raise ValueError(f"mode must be between 0 and 3, but is {v}")
+        # more than two bits, can only be 0-3
+        if v not in range(4):
+            msg = f"mode {v} has more than two bits"
+            raise ValueError(msg)
 
         self._cmod.mode = v
 
@@ -93,8 +112,9 @@ class SpiDev:
     def bits_per_word(self, value: int, /) -> None:
         v = try_convert(value, int, "bits_per_word")
 
-        if not (8 <= value <= 32):
-            raise ValueError(f"bits_per_word must be between 8 and 32, but is {v}")
+        if v not in (8, 16, 32):
+            msg = f"bits_per_word must be 8, 16 or 32, is {v}"
+            raise ValueError(msg)
 
         self._cmod.bits_per_word = v
 
@@ -123,7 +143,7 @@ class SpiDev:
         self._cmod.close()
 
     def closed(self) -> bool:
-        """True if the connection is not opened."""
+        """Return True if the connection is not opened."""
         try:
             self.fileno()
             return True
@@ -138,6 +158,7 @@ class SpiDev:
 
         Raises:
             ValueError: if the connection is not open.
+
         """
         fd = self._cmod.fileno()
         if fd < 0:
@@ -163,6 +184,7 @@ class SpiDev:
 
         Raises:
             ValueError: If bus/device or path is not provided.
+
         """
         if bus:
             self.bus = bus
@@ -180,6 +202,7 @@ class SpiDev:
 
         Raises:
             IOError
+
         """
         if path:
             self.path = path
@@ -192,6 +215,7 @@ class SpiDev:
 
         Returns:
             list[int]: _size_ number of bytes.
+
         """
         if not self.readable():
             raise OSError("SPI device not readable")
@@ -202,14 +226,14 @@ class SpiDev:
         return self._cmod.readbytes(size)
 
     def readable(self) -> bool:
-        """True if the SPI device is currently open."""
+        """Return True if the SPI device is currently open."""
         return not self.closed()
 
     def readbytes(self, length: int) -> list[int]:
         return self._cmod.readbytes(length)
 
     def writeable(self) -> bool:
-        """True if the SPI connection is currently open."""
+        """Return True if the SPI connection is currently open."""
         return not self.closed()
 
     def write(self, b: Sequence[int] | Buffer, /) -> None:
@@ -252,15 +276,9 @@ class SpiDev:
         return self._cmod.xfer3(values, speed_hz, delay_usecs, bits_per_word)
 
     def __enter__(self) -> Self:
-        """
-        Warning: If `bus` and `device` attributes or `path` attribute is not set,
-        the file has to be manually opened using its `open()` or `open_path()`
-        method.
-        """
-        try:
+        # TODO: make open() idempotent and raise IOError if opening fails
+        with suppress(ValueError):
             self.open()
-        except ValueError:
-            pass
 
         return self
 
@@ -276,17 +294,17 @@ class SpiDev:
         if self.bus is not None and self.device is not None:
             # SpiDev(0, 1)
             return f"{self.__class__.__name__}({self.bus}, {self.device})"
-        elif self.path is not None:
+        if self.path is not None:
             # SpiDev('/dev/myspi')
-            return f"{self.__class__.__name__}({repr(self.path)})"
-        else:
-            # SpiDev()
-            return f"{self.__class__.__name__}()"
+            return f"{self.__class__.__name__}({self.path!r})"
+
+        # SpiDev()
+        return f"{self.__class__.__name__}()"
 
     def __repr__(self) -> str:
-        # SpiDev(bus=0, device=1, bits_per_word=8)
+        # e.g. SpiDev(bus=0, device=1, bits_per_word=8)
         args = ", ".join(
-            f"{a}={repr(getattr(self, a))}"
+            f"{a}={getattr(self, a)!r}"
             for a in (
                 "bus",
                 "device",
@@ -300,7 +318,7 @@ class SpiDev:
         )
         return f"{self.__class__.__name__}({args})"
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return False
 
@@ -309,3 +327,6 @@ class SpiDev:
         except ValueError:
             # return False if one of the instances is uninitiated
             return False
+
+    def __del__(self) -> None:
+        del self._cmod
