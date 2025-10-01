@@ -25,7 +25,7 @@ def try_convert(val: object, typename: Callable[[Any], T], varname: str = "Value
 
 
 class SpiDev:
-    """TODO.
+    """Connect to a SPI device.
 
     Examples:
         >>> SpiDev(0, 1) # connect to /dev/spidev0.1
@@ -65,7 +65,8 @@ class SpiDev:
             self.read0 = read0
 
         # TODO: open() here? It's what the original implementation did
-        self.open()
+        if (bus and device) or path:
+            self.open()
 
     def _resolve_path(self) -> str:
         """Construct path from bus and device numbers or from given path.
@@ -105,7 +106,7 @@ class SpiDev:
     def mode(self, value: int, /) -> None:
         v = try_convert(value, int, "mode")
 
-        # more than two bits, can only be 0-3
+        # two bits max, thus value can only be 0-3
         if v not in range(4):
             msg = f"mode {v} has more than two bits"
             raise ValueError(msg)
@@ -134,8 +135,7 @@ class SpiDev:
 
     @max_speed_hz.setter
     def max_speed_hz(self, value: int, /) -> None:
-        v = try_convert(value, int, "max_speed_hz")
-        self._cmod.max_speed_hz = v
+        self._cmod.max_speed_hz = try_convert(value, int, "max_speed_hz")
 
     @property
     def read0(self) -> bool:
@@ -144,8 +144,50 @@ class SpiDev:
 
     @read0.setter
     def read0(self, value: bool, /) -> None:
-        v = try_convert(value, bool, "read0")
-        self._cmod.read0 = v
+        self._cmod.read0 = try_convert(value, bool, "read0")
+
+    @property
+    def cshigh(self) -> bool:
+        return self._cmod.cshigh
+
+    @cshigh.setter
+    def cshigh(self, value: bool, /) -> None:
+        self._cmod.cshigh = try_convert(value, bool, "cshigh")
+
+    @property
+    def threewire(self) -> bool:
+        """SI/SO signals shared."""
+        return self._cmod.threewire
+
+    @threewire.setter
+    def threewire(self, value: bool, /) -> None:
+        self._cmod.threewire = try_convert(value, bool, "threewire")
+
+    @property
+    def lsbfirst(self) -> bool:
+        return self._cmod.lsbfirst
+
+    @lsbfirst.setter
+    def lsbfirst(self, value: bool, /) -> None:
+        self._cmod.lsbfirst = try_convert(value, bool, "lsbfirst")
+
+    @property
+    def loop(self) -> bool:
+        """Sets the SPI_LOOP flag to enable loopback mode."""
+        return self._cmod.loop
+
+    @loop.setter
+    def loop(self, value: bool, /) -> None:
+        self._cmod.loop = try_convert(value, bool, "loop")
+
+    @property
+    def no_cs(self) -> bool:
+        """Sets the SPI_NO_CS flag to disable use of the chip select."""
+        return self._cmod.no_cs
+
+    @no_cs.setter
+    def no_cs(self, value: bool, /) -> None:
+        self._cmod.no_cs = try_convert(value, bool, "no_cs")
 
     def close(self) -> None:
         """Close the object from the interface."""
@@ -193,8 +235,9 @@ class SpiDev:
         if device:
             self.device = device
 
+        # TODO: If Cmod's open() would return the fd we can lift a lot of logic
+        # to here.
         self._cmod.open_path(self._resolve_path())
-        # TODO: return and set fd
 
     @deprecated("use SpiDev(path='...').open()")
     def open_path(self, path: StrPath | None = None) -> None:
@@ -225,8 +268,8 @@ class SpiDev:
         """
         if not self.readable():
             raise OSError("device closed")
-        # TODO: negative size in BaseIO.read() means "read as much as
-        # possible". How can we mimic this behavior?
+        # TODO: IOBase.read(-1) means "read as much as
+        # possible". Can we mimic this behavior?
         if size < 1:
             size = 1
         return self._cmod.readbytes(size)
@@ -259,7 +302,7 @@ class SpiDev:
         """
         if not self.writeable():
             raise OSError("device closed")
-        # TODO: return number of bytes written like RawIOBase
+        # TODO: return number of bytes written like RawIOBase does
         self._cmod.writebytes2(b)
 
     @deprecated("use SpiDev().write()")
