@@ -169,6 +169,7 @@ class SpiDev:
     def open(self) -> None: ...
 
     @overload
+    @deprecated("use SpiDev(bus, device).open()")
     def open(self, bus: int, device: int) -> None: ...
 
     def open(self, bus: int | None = None, device: int | None = None) -> None:
@@ -191,9 +192,10 @@ class SpiDev:
         if device:
             self.device = device
 
-        self.open_path()
+        self._cmod.open_path(self._resolve_path())
         # TODO: return and set fd
 
+    @deprecated("use SpiDev(path='...').open()")
     def open_path(self, path: StrPath | None = None) -> None:
         """Open SPI device at given path.
 
@@ -229,6 +231,7 @@ class SpiDev:
         """Return True if the SPI device is currently open."""
         return not self.closed()
 
+    @deprecated("use SpiDev().read()")
     def readbytes(self, length: int) -> list[int]:
         return self._cmod.readbytes(length)
 
@@ -242,10 +245,12 @@ class SpiDev:
         # TODO: return number of bytes written
         self._cmod.writebytes2(b)
 
+    @deprecated("use SpiDev().write()")
     def writebytes(self, values: Sequence[int]) -> None:
         self._cmod.writebytes(values)
 
-    def writebytes2(self, values: Union[Sequence[int], Buffer]) -> None:
+    @deprecated("use SpiDev().write()")
+    def writebytes2(self, values: Sequence[int] | Buffer) -> None:
         self._cmod.writebytes2(values)
 
     def xfer(
