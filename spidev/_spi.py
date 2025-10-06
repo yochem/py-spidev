@@ -28,9 +28,12 @@ class SpiDev:
     """Connect to a SPI device.
 
     Examples:
-        >>> SpiDev(0, 1) # connect to /dev/spidev0.1
 
-        >>> SpiDev(path='/dev/myspi') # connect to /dev/myspi
+    ```python
+    >>> SpiDev(0, 1) # connect to /dev/spidev0.1
+
+    >>> SpiDev(path='/dev/myspi') # connect to /dev/myspi
+    ```
 
     """
 
@@ -194,13 +197,9 @@ class SpiDev:
         self._cmod.close()
 
     def fileno(self) -> int:
-        """Return the file descriptor if it exists.
+        """Return the file descriptor (an integer) if it exists.
 
-        Returns:
-            int: File descriptor number.
-
-        Raises:
-            ValueError: if the connection is not open.
+        Raises a `ValueError` if the connection is not open.
 
         """
         fd = self._cmod.fileno()

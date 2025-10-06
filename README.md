@@ -24,57 +24,331 @@ print(spi.read(64))
 spi.close()
 ```
 
-## Settings
+## SpiDev
+Connect to a SPI device.
+
+Examples:
 
 ```python
-import spidev
+>>> SpiDev(0, 1) # connect to /dev/spidev0.1
 
-# setting options during initialization
-spi = spidev.SpiDev(0, 0, mode=0b01, max_speed_hz=5000)
-
-with spi:
-    spi.read()
-
-# changing options on the go
-spi.mode = 0b11
-
-with spi:
-    spi.read()
+>>> SpiDev(path='/dev/myspi') # connect to /dev/myspi
 ```
 
-Full list of supported options:
+### Properties
+#### `bits_per_word`: int
+Bits per word used in the xfer methods.
 
-* `bits_per_word`
-* `cshigh`
-* `loop` - Set the "SPI_LOOP" flag to enable loopback mode
-* `no_cs` - Set the "SPI_NO_CS" flag to disable use of the chip select
-  (although the driver may still own the CS pin)
-* `lsbfirst`
-* `max_speed_hz`
-* `mode` - SPI mode as two bit pattern of clock polarity and phase [CPOL|CPHA],
-  min: 0b00 = 0, max: 0b11 = 3
-* `threewire` - SI/SO signals shared
-* `read0` - Read 0 bytes after transfer to lower CS if cshigh == True
+#### `closed`: bool
+Return True if the connection is not opened.
 
-> [!IMPORTANT]
-> To be able to use a setting attribute, it needs to be supported by the
-> underlying SPI controller kernel driver and hardware. Not all drivers support
-> all settings! In case of a setting not being supported the error `[Errno 22]
-> Invalid argument` is thrown.
+#### `cshigh`: bool
 
-## Methods
+#### `loop`: bool
+Sets the SPI_LOOP flag to enable loopback mode.
 
-The `SpiDev` class is similar to Python's [I/O Base
-Classes](https://docs.python.org/3/library/io.html#i-o-base-classes), and so
-are its methods. The most important ones are:
+#### `lsbfirst`: bool
 
-* `close()`: disconnects from the SPI device.
-* `closed`: True if the SPI device is closed.
-* `fileno()`: Underlying file descriptor. `ValueError` if closed.
-* `readable()`: True if not closed.
-* `read(n)`: Read `n` bytes from the SPI device.
-* `writeable()`: True if not closed.
-* `write(b)`: Write bytes to SPI device.
+#### `max_speed_hz`: int
+Max speed (in Hertz).
+
+#### `mode`: int
+SPI mode.
+
+A two bit pattern of clock polarity and phase [CPOL|CPHA],
+min: 0b00 = 0, max: 0b11 = 3
+
+#### `no_cs`: bool
+Sets the SPI_NO_CS flag to disable use of the chip select.
+
+#### `read0`: bool
+Read 0 bytes after transfer to lower CS if cshigh is set.
+
+#### `threewire`: bool
+SI/SO signals shared.
+
+
+### Methods
+#### `__init__(bus, device, path, mode, bits_per_word, max_speed_hz, read0)`
+<details><summary>Signature</summary>
+
+```python
+def __init__(
+    self,
+    bus: int | None = None,
+    device: int | None = None,
+    *,
+    path: StrPath | None = None,
+    mode: int | None = None,
+    bits_per_word: int | None = None,
+    max_speed_hz: int | None = None,
+    read0: bool | None = None
+) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L40-L73)
+
+</details>
+
+Initialize self.  See help(type(self)) for accurate signature.
+
+#### `close()`
+<details><summary>Signature</summary>
+
+```python
+def close(self) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L195-L198)
+
+</details>
+
+Close the object from the interface.
+
+#### `fileno()`
+<details><summary>Signature</summary>
+
+```python
+def fileno(self) -> int
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L199-L213)
+
+</details>
+
+Return the file descriptor if it exists.
+
+Returns:
+    int: File descriptor number.
+
+Raises:
+    ValueError: if the connection is not open.
+
+#### `open(bus, device)`
+<details><summary>Signature</summary>
+
+```python
+def open(self, bus: int | None = None, device: int | None = None) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L221-L244)
+
+</details>
+
+Connect to the SPI device special file.
+
+If bus and device are provided it opens "/dev/spidev<bus.<device>". If
+path is provided it opens the SPI device at given path. Symbolic links
+are followed.
+
+Args:
+    bus: Bus number.
+    device: Device number.
+
+Raises:
+    ValueError: If bus/device or path is not provided.
+
+#### `open_path(path)`
+<details><summary>Signature</summary>
+
+```python
+def open_path(self, path: StrPath | None = None) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L245-L259)
+
+</details>
+
+Open SPI device at given path.
+
+Args:
+    path: Path to SPI device.
+
+Raises:
+    IOError
+
+#### `read(size)`
+<details><summary>Signature</summary>
+
+```python
+def read(self, size: int = -1, /) -> list[int]
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L260-L279)
+
+</details>
+
+Read and return up to _size_ bytes.
+
+If size is omitted or negative, 1 byte is read.
+
+Returns:
+    list[int]: _size_ number of bytes.
+
+Raises:
+    OSError: If device is closed.
+
+#### `readable()`
+<details><summary>Signature</summary>
+
+```python
+def readable(self) -> bool
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L280-L283)
+
+</details>
+
+Return True if the SPI device is currently open.
+
+#### `readbytes(length)`
+<details><summary>Signature</summary>
+
+```python
+def readbytes(self, length: int) -> list[int]
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L284-L287)
+
+</details>
+
+
+#### `write(b)`
+<details><summary>Signature</summary>
+
+```python
+def write(self, b: Sequence[int] | Buffer, /) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L292-L310)
+
+</details>
+
+Write bytes to SPI device.
+
+Accepts arbitrary large lists. If list size exceeds buffer size (read
+from /sys/module/spidev/parameters/bufsiz), data will be
+split into smaller chunks and sent in multiple operations.
+
+Args:
+    b: Sequence of bytes or Buffer to write.
+
+Raises:
+    OSError: If device is closed.
+
+#### `writeable()`
+<details><summary>Signature</summary>
+
+```python
+def writeable(self) -> bool
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L288-L291)
+
+</details>
+
+Return True if the SPI connection is currently open.
+
+#### `writebytes(values)`
+<details><summary>Signature</summary>
+
+```python
+def writebytes(self, values: Sequence[int]) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L311-L314)
+
+</details>
+
+
+#### `writebytes2(values)`
+<details><summary>Signature</summary>
+
+```python
+def writebytes2(self, values: Sequence[int] | Buffer) -> None
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L315-L318)
+
+</details>
+
+
+#### `xfer(values, speed_hz, delay_usecs, bits_per_word)`
+<details><summary>Signature</summary>
+
+```python
+def xfer(
+    self,
+    values: Sequence[int],
+    speed_hz: int | None = None,
+    delay_usecs: int | None = None,
+    bits_per_word: int | None = None
+) -> list[int]
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L319-L341)
+
+</details>
+
+Performs an SPI transaction.
+
+NOTE: Chip-select should be released and reactivated between blocks.
+
+Args:
+    values: Bytes to write.
+    speed_hz: Speed to use.
+    delay_usecs: Delay in microseconds between blocks.
+    bits_per_word: Bits per word.
+
+Returns:
+    TODO
+
+#### `xfer2(values, speed_hz, delay_usecs, bits_per_word)`
+<details><summary>Signature</summary>
+
+```python
+def xfer2(
+    self,
+    values: Sequence[int],
+    speed_hz: int | None = None,
+    delay_usecs: int | None = None,
+    bits_per_word: int | None = None
+) -> list[int]
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L342-L364)
+
+</details>
+
+Performs an SPI transaction.
+
+NOTE: Chip-select should be held active between blocks.
+
+Args:
+    values: Bytes to write.
+    speed_hz: Speed to use.
+    delay_usecs: Delay in microseconds between blocks.
+    bits_per_word: Bits per word.
+
+Returns:
+    TODO
+
+#### `xfer3(values, speed_hz, delay_usecs, bits_per_word)`
+<details><summary>Signature</summary>
+
+```python
+def xfer3(
+    self,
+    values: Sequence[int],
+    speed_hz: int | None = None,
+    delay_usecs: int | None = None,
+    bits_per_word: int | None = None
+) -> tuple[int, ...]
+```
+[Full source](https://github.com/yochem/py-spidev/blob/5d02d3acddb5fea513415f593c972dca7418e806/spidev/_spi.py#L365-L389)
+
+</details>
+
+Performs an SPI transaction.
+
+Accepts arbitrary large lists. If list size exceeds buffer size (read
+from /sys/module/spidev/parameters/bufsiz), data will be split
+into smaller chunks and sent in multiple operations.
+
+Args:
+    values: Bytes to write.
+    speed_hz: Speed to use.
+    delay_usecs: Delay in microseconds between blocks.
+    bits_per_word: Bits per word.
+
+Returns:
+    TODO
 
 ## The Linux kernel and SPI bus numbering and the role of udev
 
@@ -172,3 +446,4 @@ In the more general case, the example udev file should be modified as
 appropriate to your needs, renamed to something descriptive of the purpose
 and/or project, and placed in `/etc/udev/rules.d/` (or `/lib/udev/rules.d/` in
 the case of rules files included with operating system packages).
+
