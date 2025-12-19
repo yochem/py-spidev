@@ -29,7 +29,7 @@ def gh_permalink(file, obj):
     file = Path(file).relative_to(Path(".").absolute())
     lines, start = inspect.getsourcelines(obj)
     end = start + len(lines) - 1
-    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     url = f"https://github.com/doceme/py-spidev/blob/{commit}/{file}#L{start}-L{end}"
     return f"[Full source]({url})"
 
@@ -41,7 +41,7 @@ def details(content, summary="Signature"):
 def document_class(cls):
     yield heading(cls.__name__, 2)
 
-    if (doc := inspect.getdoc(cls)):
+    if doc := inspect.getdoc(cls):
         yield doc
 
     file = inspect.getsourcefile(cls)
@@ -50,7 +50,7 @@ def document_class(cls):
     for name, m in inspect.getmembers(cls, public_property):
         ptype = m.fget.__annotations__["return"]
         item = f"- `{name}` (`{ptype}`)"
-        if (doc := inspect.getdoc(m)):
+        if doc := inspect.getdoc(m):
             item += f': {doc.replace("\n", " ")}'
         yield item
 
@@ -72,18 +72,18 @@ def document_class(cls):
         text = f"def {name}{clean_signature}"
         yield details(codeblock(text) + "\n" + gh_permalink(file, m))
 
-        if (doc := inspect.getdoc(m)):
+        if doc := inspect.getdoc(m):
             yield doc
 
 
 if __name__ == "__main__":
     import spidev
 
-    if (doc := inspect.getdoc(spidev)):
-        print(doc, end='\n\n')
+    if doc := inspect.getdoc(spidev):
+        print(doc, end="\n\n")
 
     for line in document_class(spidev.SpiDev):
-        print(line, end='\n\n')
+        print(line, end="\n\n")
 
     # with open("spi-numbering.md") as f:
     #     print(f.read())
