@@ -108,7 +108,7 @@ typedef struct {
 	PyObject_HEAD
 
 	int fd;	/* open file descriptor: /dev/spidevX.Y */
-	uint8_t mode;	/* current SPI mode */
+	uint32_t mode;	/* current SPI mode */
 	uint8_t bits_per_word;	/* current SPI bits per word setting */
 	uint32_t max_speed_hz;	/* current SPI max speed setting in Hz */
 	uint8_t read0;	/* read 0 bytes after transfer to lwoer CS if SPI_CS_HIGH */
@@ -891,13 +891,13 @@ SpiDev_xfer3(SpiDevObject *self, PyObject *args)
 	return rx_tuple;
 }
 
-static int __spidev_set_mode( int fd, __u8 mode) {
-	__u8 test;
-	if (ioctl(fd, SPI_IOC_WR_MODE, &mode) == -1) {
+static int __spidev_set_mode( int fd, __u32 mode) {
+	__u32 test;
+	if (ioctl(fd, SPI_IOC_WR_MODE32, &mode) == -1) {
 		PyErr_SetFromErrno(PyExc_IOError);
 		return -1;
 	}
-	if (ioctl(fd, SPI_IOC_RD_MODE, &test) == -1) {
+	if (ioctl(fd, SPI_IOC_RD_MODE32, &test) == -1) {
 		PyErr_SetFromErrno(PyExc_IOError);
 		return -1;
 	}
@@ -1004,7 +1004,8 @@ SpiDev_get_no_cs(SpiDevObject *self, void *closure)
 static int
 SpiDev_set_mode(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint8_t mode, tmp;
+	uint8_t mode;
+	uint32_t tmp;
 	int ret;
 
 	if (val == NULL) {
@@ -1048,7 +1049,7 @@ SpiDev_set_mode(SpiDevObject *self, PyObject *val, void *closure)
 static int
 SpiDev_set_cshigh(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint8_t tmp;
+	uint32_t tmp;
 	int ret;
 
 	if (val == NULL) {
@@ -1077,7 +1078,7 @@ SpiDev_set_cshigh(SpiDevObject *self, PyObject *val, void *closure)
 static int
 SpiDev_set_lsbfirst(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint8_t tmp;
+	uint32_t tmp;
 	int ret;
 
 	if (val == NULL) {
@@ -1106,7 +1107,7 @@ SpiDev_set_lsbfirst(SpiDevObject *self, PyObject *val, void *closure)
 static int
 SpiDev_set_3wire(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint8_t tmp;
+	uint32_t tmp;
 	int ret;
 
 	if (val == NULL) {
@@ -1135,7 +1136,7 @@ SpiDev_set_3wire(SpiDevObject *self, PyObject *val, void *closure)
 static int
 SpiDev_set_no_cs(SpiDevObject *self, PyObject *val, void *closure)
 {
-        uint8_t tmp;
+        uint32_t tmp;
 	int ret;
 
         if (val == NULL) {
@@ -1165,7 +1166,7 @@ SpiDev_set_no_cs(SpiDevObject *self, PyObject *val, void *closure)
 static int
 SpiDev_set_loop(SpiDevObject *self, PyObject *val, void *closure)
 {
-	uint8_t tmp;
+	uint32_t tmp;
 	int ret;
 
 	if (val == NULL) {
@@ -1310,6 +1311,52 @@ SpiDev_set_read0(SpiDevObject *self, PyObject *val, void *closure)
 	return 0;
 }
 
+#ifdef SPI_MOSI_IDLE_LOW
+
+static PyObject *
+SpiDev_get_mosi_idle_low(SpiDevObject *self, void *closure)
+{
+	PyObject *result;
+
+	if (self->mode & SPI_MOSI_IDLE_LOW)
+		result = Py_True;
+	else
+		result = Py_False;
+
+	Py_INCREF(result);
+	return result;
+}
+
+static int
+SpiDev_set_mosi_idle_low(SpiDevObject *self, PyObject *val, void *closure)
+{
+	uint32_t tmp;
+	int ret;
+
+	if (val == NULL) {
+		PyErr_SetString(PyExc_TypeError,
+			"Cannot delete attribute");
+		return -1;
+	}
+	else if (!PyBool_Check(val)) {
+		PyErr_SetString(PyExc_TypeError,
+			"The mosi_idle_low attribute must be boolean");
+		return -1;
+	}
+
+	if (val == Py_True)
+		tmp = self->mode | SPI_MOSI_IDLE_LOW;
+	else
+		tmp = self->mode & ~SPI_MOSI_IDLE_LOW;
+
+	ret = __spidev_set_mode(self->fd, tmp);
+
+	if (ret != -1)
+		self->mode = tmp;
+	return ret;
+}
+#endif /* SPI_MOSI_IDLE_LOW */
+
 static PyGetSetDef SpiDev_getset[] = {
 	{"mode", (getter)SpiDev_get_mode, (setter)SpiDev_set_mode,
 			"SPI mode as two bit pattern of \n"
@@ -1331,6 +1378,10 @@ static PyGetSetDef SpiDev_getset[] = {
 			"maximum speed in Hz\n"},
 	{"read0", (getter)SpiDev_get_read0, (setter)SpiDev_set_read0,
 			"Read 0 bytes after transfer to lower CS if cshigh == True\n"},
+#ifdef SPI_MOSI_IDLE_LOW
+	{"mosi_idle_low", (getter)SpiDev_get_mosi_idle_low, (setter)SpiDev_set_mosi_idle_low,
+			"mosi line low when idle\n"},
+#endif
 	{NULL},
 };
 
@@ -1343,11 +1394,11 @@ SpiDev_open_dev(SpiDevObject *self, char *dev_path)
 		PyErr_SetFromErrno(PyExc_IOError);
 		return NULL;
 	}
-	if (ioctl(self->fd, SPI_IOC_RD_MODE, &tmp8) == -1) {
+	if (ioctl(self->fd, SPI_IOC_RD_MODE32, &tmp32) == -1) {
 		PyErr_SetFromErrno(PyExc_IOError);
 		return NULL;
 	}
-	self->mode = tmp8;
+	self->mode = tmp32;
 	if (ioctl(self->fd, SPI_IOC_RD_BITS_PER_WORD, &tmp8) == -1) {
 		PyErr_SetFromErrno(PyExc_IOError);
 		return NULL;
