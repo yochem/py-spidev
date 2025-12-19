@@ -1,3 +1,41 @@
+[project]
+name = "spidev"
+description = "Python bindings for Linux SPI access through spidev"
+dynamic = ["version", "readme"]
+
+authors = [
+    { name = "Volker Thoms", email = "unconnected@gmx.de" },
+]
+maintainers = [
+    { name = "Stephen Caudle", email = "scaudle@doceme.com" },
+]
+license = "MIT"
+license-files = ["LICENSE"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Operating System :: POSIX :: Linux",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development",
+    "Topic :: System :: Hardware",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+]
+keywords = ["SPI", "Linux", "SPI device"]
+requires-python = ">=3.8"
+
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=80.0"]
 build-backend = "setuptools.build_meta"
+
+[project.urls]
+Repository = "http://github.com/doceme/py-spidev"
+Issues = "https://github.com/doceme/py-spidev/issues"
+Changelog = "https://github.com/doceme/py-spidev/blob/master/CHANGELOG.md"
+
+[tool.setuptools]
+ext-modules = [
+  {name = "spidev", sources = ["spidev_module.c"]}
+]
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown" }
